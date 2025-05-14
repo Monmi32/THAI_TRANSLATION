@@ -1,67 +1,47 @@
 import streamlit as st
-import time
-from translator import translate_english_to_thai
-import styles
+from translator import translate_english_to_thai, synthesize_speech
+from styles import get_css, get_font_imports, get_header_html, get_sidebar_content, get_footer_html
 
-def main():
-    """Main function to run the Streamlit app"""
-    
-    # Set page configuration
-    st.set_page_config(
-        page_title="Thai Translator",
-        page_icon="🇹🇭",
-        layout="centered",
-        initial_sidebar_state="expanded"
-    )
+st.set_page_config(page_title="English to Thai Translator", layout="centered")
 
-    # Apply custom CSS and fonts
-    st.markdown(styles.get_css(), unsafe_allow_html=True)
-    st.markdown(styles.get_font_imports(), unsafe_allow_html=True)
+# Inject styling
+st.markdown(get_font_imports(), unsafe_allow_html=True)
+st.markdown(get_css(), unsafe_allow_html=True)
 
-    # Header
-    st.markdown(styles.get_header_html(), unsafe_allow_html=True)
+# Header
+st.markdown(get_header_html(), unsafe_allow_html=True)
 
-    # Sidebar with information
-    with st.sidebar:
-        st.title("About")
-        st.markdown(styles.get_sidebar_content())
-        
-        st.markdown("---")
-        st.markdown("Made with ❤️ using Streamlit and Gemini")
+# Sidebar
+st.sidebar.markdown(get_sidebar_content())
 
-    # Main app
-    st.markdown("<div class='translation-box'>", unsafe_allow_html=True)
-    english_text = st.text_area("Enter English text", height=150, 
-                               placeholder="Type your English text here...",
-                               key="english_input")
+# Main translation UI
+with st.container():
+    st.markdown('<div class="translation-box">', unsafe_allow_html=True)
+    english_text = st.text_area("Enter English Text", height=150)
 
-    translate_button = st.button("Translate to Thai", use_container_width=True)
+    if st.button("Translate to Thai"):
+        if english_text.strip():
+            thai_text = translate_english_to_thai(english_text)
 
-    # Store translation in session state
-    if "translation" not in st.session_state:
-        st.session_state["translation"] = ""
+            if thai_text:
+                st.markdown(f'<p class="thai-text">🇹🇭 {thai_text}</p>', unsafe_allow_html=True)
 
-    if translate_button and english_text:
-        with st.spinner("Translating..."):
-            # Add a slight delay to show the spinner
-            time.sleep(0.5)
-            translation = translate_english_to_thai(english_text)
-            if translation:
-                st.session_state["translation"] = translation
+                # English TTS
+                eng_audio_path = synthesize_speech(english_text, lang='en')
+                if eng_audio_path:
+                    st.markdown("🔊 English Pronunciation")
+                    st.audio(eng_audio_path, format="audio/mp3", start_time=0)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+                # Thai TTS
+                thai_audio_path = synthesize_speech(thai_text, lang='th')
+                if thai_audio_path:
+                    st.markdown("🔊 Thai Pronunciation")
+                    st.audio(thai_audio_path, format="audio/mp3", start_time=0)
+            else:
+                st.error("Translation failed. Please try again.")
+        else:
+            st.warning("Please enter some English text.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # Display translation result
-    if "translation" in st.session_state and st.session_state["translation"]:
-        st.markdown("<div class='translation-box'>", unsafe_allow_html=True)
-        st.subheader("Thai Translation")
-        st.markdown(f"<p class='thai-text'>{st.session_state['translation']}</p>", unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-
-
-    # Footer
-    st.markdown(styles.get_footer_html(), unsafe_allow_html=True)
-
-if __name__ == "__main__":
-    main()
+# Footer
+st.markdown(get_footer_html(), unsafe_allow_html=True)
